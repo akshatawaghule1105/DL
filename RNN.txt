@@ -1,0 +1,110 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Prepare sequence data
+sequence = [1, 2, 3, 4, 5]
+
+x = np.array(sequence) / 5
+target = np.array([2, 3, 4, 5, 6]) / 5
+
+print("Input:", x)
+print("Target:", target)
+
+# Initialize weights and biases
+np.random.seed(42)
+
+wx = np.random.randn() * 0.1
+wh = np.random.randn() * 0.1
+wy = np.random.randn() * 0.1
+
+bh = 0.0
+by = 0.0
+
+print("Weights initialized")
+
+# Define RNN forward pass
+def forward(x):
+    h = [0.0]
+    predictions = []
+
+    for value in x:
+        new_h = np.tanh(wx * value + wh * h[-1] + bh)
+        h.append(new_h)
+
+        y = wy * new_h + by
+        predictions.append(y)
+
+    return h, np.array(predictions)
+
+print("RNN created")
+
+# Training parameters
+learning_rate = 0.05
+epochs = 1500
+loss_history = []
+
+print("Training parameters initialized")
+
+# Train the RNN using Backpropagation Through Time (BPTT)
+for epoch in range(epochs):
+
+    h, pred = forward(x)
+
+    loss = np.mean((pred - target) ** 2)
+    loss_history.append(loss)
+
+    dwx = dwh = dwy = dbh = dby = dh = 0.0
+
+    for t in range(len(x) - 1, -1, -1):
+
+        error = 2 * (pred[t] - target[t]) / len(x)
+
+        dwy += error * h[t + 1]
+        dby += error
+
+        dz = (error * wy + dh) * (1 - h[t + 1] ** 2)
+
+        dwx += dz * x[t]
+        dwh += dz * h[t]
+        dbh += dz
+
+        dh = dz * wh
+
+    wx -= learning_rate * dwx
+    wh -= learning_rate * dwh
+    wy -= learning_rate * dwy
+    bh -= learning_rate * dbh
+    by -= learning_rate * dby
+
+    if (epoch + 1) % 300 == 0:
+        print("Epoch:", epoch + 1, "Loss:", round(loss, 6))
+
+# Training results
+print("Training completed!")
+print("Final Loss:", round(loss_history[-1], 6))
+
+# Display actual and predicted values
+h, predictions = forward(x)
+
+print("Actual | Predicted")
+for actual, predicted in zip(target * 5, predictions * 5):
+    print(int(actual), "|", round(predicted, 2))
+
+# Plot training loss
+plt.plot(loss_history)
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("RNN Training Loss")
+plt.grid(True)
+plt.show()
+
+# Plot actual vs predicted values
+plt.plot(target * 5, label="Actual", marker="o")
+plt.plot(predictions * 5, label="Predicted", marker="x")
+
+plt.xlabel("Time Step")
+plt.ylabel("Value")
+plt.title("RNN Prediction")
+plt.legend()
+plt.grid(True)
+plt.show()
