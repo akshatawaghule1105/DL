@@ -1,0 +1,93 @@
+
+# FNN - MNIST Handwritten Digit Classification
+
+# 1. Import Libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from zipfile import ZipFile
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+
+# 2. Load MNIST Dataset from ZIP file
+zip_path = r"C:\Users\ADMIN\Downloads\MNIST-20221031T095906Z-001.zip"
+
+with ZipFile(zip_path) as z:
+    df = pd.read_csv(
+        z.open("MNIST/mnist_784_csv.csv"),
+        nrows=10000,
+        dtype=np.uint8
+    )
+
+print("Dataset Shape:", df.shape)
+print(df.head())
+
+# 3. Separate Features and Labels
+X = df.drop("class", axis=1).to_numpy(dtype=np.float32) / 255.0
+y = df["class"].to_numpy()
+
+print("X Shape:", X.shape)
+print("Y Shape:", y.shape)
+
+# 4. Split Dataset into Training and Testing Data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print("Training:", X_train.shape)
+print("Testing:", X_test.shape)
+
+# 5. Build Feed Forward Neural Network
+model = keras.Sequential([
+    keras.Input(shape=(784,)),
+    keras.layers.Dense(128, activation="relu"),
+    keras.layers.Dropout(0.2),
+    keras.layers.Dense(64, activation="relu"),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+# 6. Compile Model
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+# 7. Train Model
+history = model.fit(
+    X_train,
+    y_train,
+    epochs=10,
+    batch_size=32,
+    validation_split=0.1
+)
+
+# 8. Evaluate Model
+loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+
+print("Test Loss:", round(loss, 4))
+print("Test Accuracy:", round(accuracy * 100, 2), "%")
+
+# 9. Make Prediction
+prediction = model.predict(X_test[:1], verbose=0)
+
+predicted_digit = np.argmax(prediction[0])
+
+print("Predicted Digit:", predicted_digit)
+print("Actual Digit:", y_test[0])
+
+# 10. Display Test Image
+plt.imshow(X_test[0].reshape(28, 28), cmap="gray")
+plt.title(f"Predicted: {predicted_digit} | Actual: {y_test[0]}")
+plt.axis("off")
+plt.show()
+
+# 11. Plot Training and Validation Accuracy
+plt.plot(history.history["accuracy"], label="Training")
+plt.plot(history.history["val_accuracy"], label="Validation")
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("MNIST Training History")
+plt.legend()
+plt.show()
