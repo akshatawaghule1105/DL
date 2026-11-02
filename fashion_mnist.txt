@@ -1,0 +1,109 @@
+# Import libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from zipfile import ZipFile
+from tensorflow import keras
+from tensorflow.keras import layers
+
+# Extract and load Fashion-MNIST dataset
+with ZipFile(r"C:\Users\YOUR_USERNAME\Downloads\Fashion MNIST-20221031T093245Z-001.zip") as z:
+    z.extractall(".")
+
+train = pd.read_csv(
+    "Fashion MNIST/fashion-mnist_train.csv",
+    nrows=10000
+)
+
+test = pd.read_csv(
+    "Fashion MNIST/fashion-mnist_test.csv",
+    nrows=2000
+)
+
+print("Training:", train.shape)
+print("Testing:", test.shape)
+
+# Separate features and labels
+x_train = train.drop("label", axis=1).values
+y_train = train["label"].values
+
+x_test = test.drop("label", axis=1).values
+y_test = test["label"].values
+
+print("Input:", x_train.shape)
+print("Labels:", y_train.shape)
+
+# Normalize and reshape images
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+x_train = x_train.reshape(-1, 28, 28, 1)
+x_test = x_test.reshape(-1, 28, 28, 1)
+
+print("Training:", x_train.shape)
+print("Testing:", x_test.shape)
+
+# Build CNN model
+model = keras.Sequential([
+    keras.Input(shape=(28, 28, 1)),
+    layers.Conv2D(32, (3, 3), activation="relu"),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation="relu"),
+    layers.MaxPooling2D((2, 2)),
+    layers.Flatten(),
+    layers.Dense(64, activation="relu"),
+    layers.Dense(10, activation="softmax")
+])
+
+model.summary()
+
+# Compile model
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+# Train model
+history = model.fit(
+    x_train,
+    y_train,
+    epochs=5,
+    batch_size=32,
+    validation_split=0.1
+)
+
+# Evaluate model
+loss, accuracy = model.evaluate(x_test, y_test)
+
+print("Test Accuracy:", round(accuracy * 100, 2), "%")
+
+# Class names
+classes = [
+    "T-shirt", "Trouser", "Pullover", "Dress", "Coat",
+    "Sandal", "Shirt", "Sneaker", "Bag", "Ankle Boot"
+]
+
+# Predict an image
+prediction = model.predict(x_test[:1], verbose=0)
+predicted = np.argmax(prediction[0])
+
+print("Predicted:", classes[predicted])
+print("Actual:", classes[y_test[0]])
+
+# Display image
+plt.imshow(x_test[0].reshape(28, 28), cmap="gray")
+plt.title("Predicted: " + classes[predicted])
+plt.axis("off")
+plt.show()
+
+# Plot training and validation accuracy
+plt.plot(history.history["accuracy"], label="Training")
+plt.plot(history.history["val_accuracy"], label="Validation")
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Fashion-MNIST CNN Accuracy")
+plt.legend()
+plt.show()
