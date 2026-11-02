@@ -1,0 +1,110 @@
+# Import libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from zipfile import ZipFile
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+
+# Load CIFAR-10 dataset
+with ZipFile("cifar10.zip") as z:
+    df = pd.read_csv(
+        z.open("train.csv"),
+        nrows=10000,
+        dtype=np.uint8
+    )
+
+print("Dataset shape:", df.shape)
+print(df.head())
+
+# Separate features and labels
+X = df.drop("label", axis=1).to_numpy(dtype=np.float32) / 255.0
+y = df["label"].to_numpy()
+
+print("Features shape:", X.shape)
+print("Labels shape:", y.shape)
+
+# Split dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+print("Training samples:", X_train.shape)
+print("Testing samples:", X_test.shape)
+
+# Build Feedforward Neural Network (FNN)
+model = keras.Sequential([
+    keras.Input(shape=(3072,)),
+    keras.layers.Dense(512, activation="relu"),
+    keras.layers.Dense(256, activation="relu"),
+    keras.layers.Dense(128, activation="relu"),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+# Compile model
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+# Early stopping
+early_stop = keras.callbacks.EarlyStopping(
+    monitor="val_loss",
+    patience=3,
+    restore_best_weights=True
+)
+
+# Train model
+history = model.fit(
+    X_train,
+    y_train,
+    epochs=10,
+    batch_size=32,
+    validation_split=0.1,
+    callbacks=[early_stop]
+)
+
+# Evaluate model
+loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+
+print("\nTest Loss:", round(loss, 4))
+print("Test Accuracy:", round(accuracy * 100, 2), "%")
+
+# Class names
+classes = [
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck"
+]
+
+# Predict a test image
+prediction = model.predict(X_test[:1], verbose=0)
+predicted_class = np.argmax(prediction[0])
+
+print("Predicted:", classes[predicted_class])
+print("Actual:", classes[int(y_test[0])])
+
+# Display predicted image
+image = X_test[0].reshape(3, 32, 32).transpose(1, 2, 0)
+
+plt.imshow(image)
+plt.title(
+    f"Predicted: {classes[predicted_class]} | "
+    f"Actual: {classes[int(y_test[0])]}"
+)
+plt.axis("off")
+plt.show()
+
+# Plot training and validation accuracy
+plt.plot(history.history["accuracy"], label="Training Accuracy")
+plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("CIFAR-10 Training History")
+plt.legend()
+plt.show()
